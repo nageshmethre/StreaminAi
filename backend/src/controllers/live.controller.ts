@@ -2,7 +2,6 @@ import { Response } from 'express';
 import { prisma } from '../db/client';
 import { AuthRequest } from '../middleware/auth';
 import { SocketManager } from '../services/socket';
-import { uuid } from 'uuidv4'; // or simple random generation since we are in node
 
 export class LiveController {
   static async startLiveStream(req: AuthRequest, res: Response) {
