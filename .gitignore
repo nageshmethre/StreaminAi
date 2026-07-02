@@ -1,0 +1,42 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Production builds
+dist/
+build/
+
+# IDE files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment configurations
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+
+# Databases & local uploads
+dev.db
+dev.db-journal
+uploads/temp/
+uploads/hls/
+backend/uploads/
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

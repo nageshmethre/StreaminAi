@@ -1,0 +1,75 @@
+name: StreaminAi CI/CD Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    # Test and Build Backend
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm install
+
+    - name: Generate Prisma Client
+      run: |
+        cd backend
+        npx prisma generate
+
+    - name: Run Backend Tests
+      run: |
+        cd backend
+        npm run test
+
+    # Test and Build Frontend
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm install
+
+    - name: Compile Next.js Static Export
+      run: |
+        cd frontend
+        npm run build
+
+  deploy-production:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # Simulated Deployment to VPS using SSH commands to update containers
+    - name: Deploy to VPS at stream-in.app
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USERNAME }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        script: |
+          cd /var/www/streamin-ai
+          git pull origin main
+          docker-compose down
+          docker-compose -f docker-compose.yml -f production-override.yml up -d --build
+          docker exec streamin-api npx prisma db push
+          echo "StreaminAi deployed successfully to stream-in.app!"

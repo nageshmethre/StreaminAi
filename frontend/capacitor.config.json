@@ -1,0 +1,10 @@
+{
+  "appId": "com.streamin.app",
+  "appName": "StreaminAi",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["localhost:5000"]
+  }
+}

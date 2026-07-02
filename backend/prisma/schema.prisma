@@ -1,0 +1,177 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  VIEWER
+  CREATOR
+  ADMIN
+}
+
+enum Tier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum VideoStatus {
+  DRAFT
+  PROCESSING
+  READY
+  FAILED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  role          Role           @default(VIEWER)
+  tier          Tier           @default(FREE)
+  stripeCustId  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  channel       Channel?
+  comments      Comment[]
+  likes         Like[]
+  subscriptions Subscription[] @relation("SubscriberRelation")
+  notifications Notification[] @relation("UserNotifications")
+  sentNotifications Notification[] @relation("SenderNotifications")
+  liveChatMessages LiveChatMessage[]
+  auditLogs     AuditLog[]
+}
+
+model Channel {
+  id            String         @id @default(uuid())
+  name          String
+  handle        String         @unique
+  description   String?
+  avatarUrl     String?
+  bannerUrl     String?
+  userId        String         @unique
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscribers   Subscription[] @relation("ChannelRelation")
+  videos        Video[]
+  liveStreams   LiveStream[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Video {
+  id            String         @id @default(uuid())
+  title         String
+  description   String?
+  url           String?        // HLS playlist or absolute file path
+  thumbnailUrl  String?
+  views         Int            @default(0)
+  duration      Float          @default(0.0)
+  category      String         @default("General")
+  status        VideoStatus    @default(PROCESSING)
+  transcript    String?
+  aiSummary     String?
+  channelId     String
+  channel       Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  likes         Like[]
+  notifications Notification[]
+  analytics     AnalyticsMetric[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Comment {
+  id            String         @id @default(uuid())
+  content       String
+  videoId       String
+  video         Video          @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId      String?
+  parent        Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[]      @relation("CommentReplies")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Subscription {
+  id            String         @id @default(uuid())
+  channelId     String
+  channel       Channel        @relation("ChannelRelation", fields: [channelId], references: [id], onDelete: Cascade)
+  subscriberId  String
+  subscriber    User           @relation("SubscriberRelation", fields: [subscriberId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+
+  @@unique([channelId, subscriberId])
+}
+
+model Like {
+  id            String         @id @default(uuid())
+  videoId       String
+  video         Video          @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDislike     Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+
+  @@unique([videoId, userId])
+}
+
+model LiveStream {
+  id            String         @id @default(uuid())
+  title         String
+  streamKey     String         @unique
+  isActive      Boolean        @default(false)
+  viewerCount   Int            @default(0)
+  channelId     String
+  channel       Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  chatMessages  LiveChatMessage[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model LiveChatMessage {
+  id            String         @id @default(uuid())
+  liveStreamId  String
+  liveStream    LiveStream     @relation(fields: [liveStreamId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content       String
+  createdAt     DateTime       @default(now())
+}
+
+model Notification {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  senderId      String?
+  sender        User?          @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  type          String         // e.g. "UPLOAD", "SUBSCRIBE", "COMMENT", "LIVE"
+  isRead        Boolean        @default(false)
+  videoId       String?
+  video         Video?         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  message       String
+  createdAt     DateTime       @default(now())
+}
+
+model AnalyticsMetric {
+  id               String      @id @default(uuid())
+  videoId          String
+  video            Video       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  views            Int         @default(0)
+  watchTimeSeconds Float       @default(0.0)
+  date             DateTime    @default(now())
+}
+
+model AuditLog {
+  id            String         @id @default(uuid())
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action        String
+  details       String?
+  ipAddress     String?
+  createdAt     DateTime       @default(now())
+}
